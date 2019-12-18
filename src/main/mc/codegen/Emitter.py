@@ -431,6 +431,7 @@ class Emitter():
 
         frame.pop()
         frame.pop()
+        #print(frame.getStackSize())
         if op == ">":
             result.append(self.jvm.emitIFICMPLE(labelF))
         elif op == ">=":
@@ -443,12 +444,14 @@ class Emitter():
             result.append(self.jvm.emitIFICMPEQ(labelF))
         elif op == "==":
             result.append(self.jvm.emitIFICMPNE(labelF))
-        result.append(self.emitPUSHCONST("1", IntType(), frame))
+        result.append(self.emitPUSHCONST(1, IntType(), frame))
+        #print(frame.getStackSize())
         frame.pop()
         result.append(self.emitGOTO(labelO, frame))
         result.append(self.emitLABEL(labelF, frame))
-        result.append(self.emitPUSHCONST("0", IntType(), frame))
+        result.append(self.emitPUSHCONST(0, IntType(), frame))
         result.append(self.emitLABEL(labelO, frame))
+        #print(frame.getStackSize())
         return ''.join(result)
 
     def emitFREOP(self, op, left, right, frame):
@@ -573,7 +576,10 @@ class Emitter():
         #if type(eleType) in [cgen.ArrayPointerType, cgen.ClassType, StringType, ArrayType]:
         #    buffer.append(self.jvm.emitANEWARRAY(self.getFullType(eleType)))
         #else:
-        buffer.append(self.jvm.emitNEWARRAY(self.getFullType(eleType)))
+        if type(eleType) == StringType:
+            buffer.append(self.jvm.emitANEWARRAY(self.getFullType(eleType)))
+        else:
+            buffer.append(self.jvm.emitNEWARRAY(self.getFullType(eleType)))
 
         if cop == True:
             return ''.join(buffer)

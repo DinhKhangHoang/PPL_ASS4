@@ -224,15 +224,12 @@ class CodeGenVisitor(BaseVisitor, Utils):
                     elif isinstance(x, Expr):
                         str1, typ1 = self.visit(x, Access(frame, glenv, False, True))
                         self.emit.printout(str1)
+                        #print(frame.getStackSize())
                         if frame.getStackSize() > 0:
                             self.emit.printout(self.emit.emitPOP(frame))
-                        
-                        #if isinstance(x, LHS):
-                        #    self.emit.printout(self.emit.emitPOP(frame))
-                        #print(frame.getStackSize())
-                    elif type(x) is Block:
+                    elif isinstance(x, Block):
                         self.visit(x, SubBody(e.frame, [[]] + e.sym))
-                    elif isinstance(x, Stmt):
+                    else:
                         self.visit(x, e)
 
 
@@ -263,20 +260,20 @@ class CodeGenVisitor(BaseVisitor, Utils):
         frame.enterScope(False)
         self.emit.printout(self.emit.emitLABEL(frame.getStartLabel(), frame))
         e = SubBody(frame, glenv)
-        
+        #print(frame.getStackSize())
         for x in ast.member:
-            if type(x) is Block:
+            if isinstance(x, Block):
                 self.visit(x, SubBody(e.frame, [[]] + e.sym))
-            if type(x) is VarDecl:
+            elif isinstance(x, Decl):
                 e = self.visit(x, e)
                 glenv = e.sym
                 if type(x.varType) is ArrayType:
                     idx = glenv[0][0].value.value
-                    self.emit.printout(self.emit.emitINITARRAY(idx, x.varType, frame))
+                    self.emit.printout(self.emit.emitINITARRAY(idx, x.varType, e.frame))
             elif isinstance(x, Expr) is False:
                 self.visit(x, e)
             else:
-                str1, typ1 = self.visit(x, Access(frame, glenv, False, True))
+                str1, typ1 = self.visit(x, Access(e.frame, glenv, False, True))
                 self.emit.printout(str1)
                 #print(frame.getStackSize())
                 if frame.getStackSize() > 0:
@@ -329,19 +326,33 @@ class CodeGenVisitor(BaseVisitor, Utils):
         labelContinue = frame.getContinueLabel()
         labelBreak = frame.getBreakLabel()
         label1 = frame.getNewLabel()
+        #print(frame.getStackSize())
         str1, typ1 = self.visit(ast.expr1, Access(frame, nenv, False, True))
         self.emit.printout(str1)
+        
         self.emit.printout(self.emit.emitLABEL(labelContinue, frame))
+        
         str1, typ1 = self.visit(ast.expr2, Access(frame, nenv, False, True))
         self.emit.printout(str1)
+        #print(frame.getStackSize())
         self.emit.printout(self.emit.emitIFFALSE(labelBreak, frame))
 
-        self.visit(ast.loop, o)
-
+        #self.visit(ast.loop, o)
+        #print(frame.getStackSize())
+        if isinstance(ast.loop, Block):
+            self.visit(ast.loop, SubBody(frame, [[]] + nenv))
+        elif isinstance(ast.loop, Expr) is False:
+            self.visit(ast.loop, SubBody(frame, nenv))
+        else:
+            str1, typ1 = self.visit(ast.loop, Access(frame, nenv, False, True))
+            self.emit.printout(str1)
+            #print(frame.getStackSize())
+            if frame.getStackSize() > 0:
+                self.emit.printout(self.emit.emitPOP(frame))
         str1, typ1 = self.visit(ast.expr3, Access(frame, nenv, False, True))
         self.emit.printout(str1)
         self.emit.printout(self.emit.emitGOTO(labelContinue, frame))
-        self.emit.printout(self.emit.emitLABEL(labelBreak, frame, False, True))
+        self.emit.printout(self.emit.emitLABEL(labelBreak, frame))
         frame.exitLoop()
 
     def visitIf(self, ast, o):
@@ -366,13 +377,31 @@ class CodeGenVisitor(BaseVisitor, Utils):
         # Neu dieu kien sai thi nhay toi label1
         self.emit.printout(self.emit.emitIFFALSE(label1, frame))
         #list(map(lambda x: self.visit(x, o), ast.thenStmt))
-        self.visit(ast.thenStmt, o)
+        if isinstance(ast.thenStmt, Block):
+            self.visit(ast.thenStmt, SubBody(frame, [[]] + nenv))
+        elif isinstance(ast.thenStmt, Expr) is False:
+            self.visit(ast.thenStmt, SubBody(frame, nenv))
+        else:
+            str1, typ1 = self.visit(ast.thenStmt, Access(frame, nenv, False, True))
+            self.emit.printout(str1)
+            if frame.getStackSize() > 0:
+                self.emit.printout(self.emit.emitPOP(frame))
+        #self.visit(ast.thenStmt, Access(frame, nenv, False, True))
         if ast.elseStmt is not None:
             self.emit.printout(self.emit.emitGOTO(label2, frame))
         self.emit.printout(self.emit.emitLABEL(label1,frame))
         if ast.elseStmt is not None:
             #list(map(lambda x: self.visit(x, o), ast.elseStmt))
-            self.visit(ast.elseStmt, o)
+            #self.visit(ast.elseStmt, o)
+            if isinstance(ast.elseStmt, Block):
+                self.visit(ast.elseStmt, SubBody(frame, [[]] + nenv))
+            elif isinstance(ast.elseStmt, Expr) is False:
+                self.visit(ast.elseStmt, SubBody(frame, nenv))
+            else:
+                str1, typ1 = self.visit(ast.elseStmt, Access(frame, nenv, False, True))
+                self.emit.printout(str1)
+                if frame.getStackSize() > 0:
+                    self.emit.printout(self.emit.emitPOP(frame))
             self.emit.printout(self.emit.emitLABEL(label2, frame))
 
     def visitBreak(self, ast, o):
@@ -523,6 +552,7 @@ class CodeGenVisitor(BaseVisitor, Utils):
                 elif ast.op == '%':
                     return left + right + self.emit.emitMOD(ast.op, IntType(), frame), IntType()
                 elif ast.op in ['<', '<=', '>', '>=', '==', '!=']:
+                    #print(frame.getStackSize())
                     return left + right + self.emit.emitREOP(ast.op, IntType(), frame), BoolType()
 
             elif type(typLeft) is FloatType:
