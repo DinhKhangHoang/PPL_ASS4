@@ -234,6 +234,7 @@ class CodeGenVisitor(BaseVisitor, Utils):
 
 
             self.emit.printout(self.emit.emitLABEL(frame.getEndLabel(), frame))
+            frame.push()
             self.emit.printout(self.emit.emitRETURN(returnType, frame))
             self.emit.printout(self.emit.emitENDMETHOD(frame))
             frame.exitScope()
@@ -309,7 +310,7 @@ class CodeGenVisitor(BaseVisitor, Utils):
             elif isinstance(x, Stmt):
                 self.visit(x, e)
         self.emit.printout(self.emit.emitLABEL(labelContinue, frame))
-        str1, typ1 = self.visit(ast.expr, Access(frame, glenv, False, True))
+        str1, typ1 = self.visit(ast.exp, Access(frame, glenv, False, True))
         self.emit.printout(str1)
         self.emit.printout(self.emit.emitIFTRUE(label_first, frame))
         self.emit.printout(self.emit.emitLABEL(labelBreak, frame))
@@ -329,8 +330,9 @@ class CodeGenVisitor(BaseVisitor, Utils):
         #print(frame.getStackSize())
         str1, typ1 = self.visit(ast.expr1, Access(frame, nenv, False, True))
         self.emit.printout(str1)
-        
-        self.emit.printout(self.emit.emitLABEL(labelContinue, frame))
+        if frame.getStackSize() > 0:
+            self.emit.printout(self.emit.emitPOP(frame))
+        self.emit.printout(self.emit.emitLABEL(label1, frame))
         
         str1, typ1 = self.visit(ast.expr2, Access(frame, nenv, False, True))
         self.emit.printout(str1)
@@ -349,9 +351,12 @@ class CodeGenVisitor(BaseVisitor, Utils):
             #print(frame.getStackSize())
             if frame.getStackSize() > 0:
                 self.emit.printout(self.emit.emitPOP(frame))
+        self.emit.printout(self.emit.emitLABEL(labelContinue, frame))
         str1, typ1 = self.visit(ast.expr3, Access(frame, nenv, False, True))
         self.emit.printout(str1)
-        self.emit.printout(self.emit.emitGOTO(labelContinue, frame))
+        if frame.getStackSize() > 0:
+            self.emit.printout(self.emit.emitPOP(frame))
+        self.emit.printout(self.emit.emitGOTO(label1, frame))
         self.emit.printout(self.emit.emitLABEL(labelBreak, frame))
         frame.exitLoop()
 
@@ -431,7 +436,7 @@ class CodeGenVisitor(BaseVisitor, Utils):
             if type(typ1) is IntType and type(frame.returnType) is FloatType:
                 str1 += self.emit.emitI2F(frame)
             self.emit.printout(str1)
-        self.emit.printout(self.emit.emitGOTO(frame.getEndLabel(), frame))
+        self.emit.printout(self.emit.emitRETURN(frame.returnType, frame))
 
     def visitId(self, ast, o):
         #name: str
@@ -461,7 +466,8 @@ class CodeGenVisitor(BaseVisitor, Utils):
         frame = ctxt.frame
         nenv = ctxt.sym
         body, typ = self.visit(ast.body, Access(frame, nenv, False, True))
-        if ast.op.lower() == 'not' and type(typ) is BoolType:
+        if ast.op == '!' and type(typ) is BoolType:
+            print(frame.getStackSize())
             return body + self.emit.emitNOT(IntType(), frame), BoolType()
         elif ast.op == '-' and type(typ) is IntType:
             return body + self.emit.emitNEGOP(IntType(), frame), IntType()
@@ -472,29 +478,31 @@ class CodeGenVisitor(BaseVisitor, Utils):
         ctxt = o
         frame = ctxt.frame
         nenv = ctxt.sym
-        
+        print(frame.getStackSize())
         if type(ast.left) is ArrayCell:
             # gan mot gia tri cho mot index expression.
             left, typLeft = self.visit(ast.left, Access(frame, nenv, True, True))
             #self.emit.printout(left)
             right, typRight = self.visit(ast.right, Access(frame, nenv, False, True))
+            loadLeft, typLoadLeft = self.visit(ast.left, Access(frame, nenv, False, True))
             #self.emit.printout(right)
             if type(typLeft) != type(typRight):
                 #self.emit.printout(self.emit.emitI2F(frame))
             #self.emit.printout(self.emit.emitASTORE(typLeft, frame))   
-                return left + right + self.emitI2F(frame) + self.emit.emitASTORE(typLeft, frame), FloatType()
+                return left + right + self.emit.emitI2F(frame) + self.emit.emitASTORE(typLeft, frame) + loadLeft, FloatType()
             else:
-                return left + right + self.emit.emitASTORE(typLeft, frame), typLeft
+                return left + right + self.emit.emitASTORE(typLeft, frame) + loadLeft, typLeft
         else:
             # gan mot gia tri cho mot bien
             right, typRight = self.visit(ast.right, Access(frame, nenv, False, True))
             left, typLeft = self.visit(ast.left, Access(frame, nenv, True, True))
+            loadLeft, typLoadLeft = self.visit(ast.left, Access(frame, nenv, False, True))
             if type(typRight) is IntType and type(typLeft) is FloatType:
                 #right += self.emit.emitI2F(frame)
             #self.emit.emitDUP(frame)
             #self.emit.printout(right + left)
-                return right + self.emit.emitI2F(frame) + left, FloatType()
-            return right + left, typLeft
+                return right + self.emit.emitI2F(frame) + left + loadLeft, FloatType()
+            return right + left + loadLeft, typLeft
 
     def visitBinaryOp(self, ast, o):
         #o: any
@@ -550,9 +558,9 @@ class CodeGenVisitor(BaseVisitor, Utils):
                 elif ast.op in ['*', '/']:
                     return left + right + self.emit.emitMULOP(ast.op, IntType(), frame), IntType()
                 elif ast.op == '%':
-                    return left + right + self.emit.emitMOD(ast.op, IntType(), frame), IntType()
+                    return left + right + self.emit.emitMOD(frame), IntType()
                 elif ast.op in ['<', '<=', '>', '>=', '==', '!=']:
-                    #print(frame.getStackSize())
+                    print(frame.getStackSize())
                     return left + right + self.emit.emitREOP(ast.op, IntType(), frame), BoolType()
 
             elif type(typLeft) is FloatType:
@@ -580,6 +588,7 @@ class CodeGenVisitor(BaseVisitor, Utils):
                 if type(typRight) is IntType: 
                     right += self.emit.emitI2F(frame)
                 if ast.op in ['<', '<=', '>', '>=']:
+                    #print(frame.getStackSize())
                     return self.emit.emitFREOP(ast.op, left, right, frame), BoolType()
 
     def visitArrayCell(self, ast, o):
@@ -609,17 +618,18 @@ class CodeGenVisitor(BaseVisitor, Utils):
         sym = self.lookup(ast.method.name, nenv[-1], lambda x: x.name)
         cname = sym.value.value
         ctype = sym.mtype
-
-        in_ = ("", list())
+        in_ = ""
+        lst = []
         for i in range(len(ast.param)):
             str1, typ1 = self.visit(ast.param[i], Access(frame, nenv, False, True))
             if type(typ1) is IntType and type(sym.mtype.partype[i]) is FloatType:
                 str1 += self.emit.emitI2F(frame)
-            in_ = (in_[0] + str1, in_[1].append(typ1))
+            in_ = in_ + str1
+            lst.append(typ1)
         #in_[0] += self.emit.emitINVOKESTATIC(cname + "/" + ast.method.name, ctype, frame)
         #self.emit.printout(in_[0])
         #self.emit.printout(self.emit.emitINVOKESTATIC(cname + "/" + ast.method.name, ctype, frame))
-        return in_[0] + self.emit.emitINVOKESTATIC(cname + "/" + ast.method.name, ctype, frame), ctype.rettype
+        return in_ + self.emit.emitINVOKESTATIC(cname + "/" + ast.method.name, ctype, frame), ctype.rettype
 
     def visitIntLiteral(self, ast, o):
         #ast: IntLiteral

@@ -3,6 +3,7 @@ from StaticCheck import *
 from StaticError import *
 from MachineCode import JasminCode
 import CodeGenerator as cgen
+from CodeGenError import *
 
 class Emitter():
     def __init__(self, filename):
@@ -128,7 +129,7 @@ class Emitter():
             return self.jvm.emitBASTORE()
         elif type(in_) is FloatType:
             return self.jvm.emitFASTORE()
-        elif type(in_) is ArrayPointerType or type(in_) is ClassType or type(in_) is StringType:
+        elif type(in_) is ArrayPointerType or type(in_) is StringType:
             return self.jvm.emitAASTORE()
         else:
             raise IllegalOperandException(str(in_))
@@ -194,7 +195,7 @@ class Emitter():
 
         if type(inType) in [IntType, BoolType]:
             return self.jvm.emitISTORE(index)
-        elif type(intType) is FloatType:
+        elif type(inType) is FloatType:
             return self.jvm.emitFSTORE(index)
         elif type(inType) in [ArrayPointerType ,cgen.ClassType ,StringType]:
             return self.jvm.emitASTORE(index)
@@ -445,13 +446,13 @@ class Emitter():
         elif op == "==":
             result.append(self.jvm.emitIFICMPNE(labelF))
         result.append(self.emitPUSHCONST(1, IntType(), frame))
-        #print(frame.getStackSize())
+        
         frame.pop()
         result.append(self.emitGOTO(labelO, frame))
         result.append(self.emitLABEL(labelF, frame))
         result.append(self.emitPUSHCONST(0, IntType(), frame))
         result.append(self.emitLABEL(labelO, frame))
-        #print(frame.getStackSize())
+        
         return ''.join(result)
 
     def emitFREOP(self, op, left, right, frame):
@@ -490,11 +491,11 @@ class Emitter():
         #    result.append(self.jvm.emitFCMPL())
         #    result.append(self.jvm.emitIFNE(labelF))
 
-        result.append(self.emitPUSHCONST("1", IntType(), frame))
+        result.append(self.emitPUSHCONST(1, IntType(), frame))
         frame.pop()
         result.append(self.emitGOTO(labelO, frame))
         result.append(self.emitLABEL(labelF, frame))
-        result.append(self.emitPUSHCONST("0", IntType(), frame))
+        result.append(self.emitPUSHCONST(0, IntType(), frame))
         result.append(self.emitLABEL(labelO, frame))
         return ''.join(result)
 
@@ -655,6 +656,10 @@ class Emitter():
 
         frame.push()
         return self.jvm.emitDUP()
+
+    def emitDUPX2(self, frame):
+        frame.push()
+        return self.jvm.emitDUPX2()
 
     def emitPOP(self, frame):
         #frame: Frame
