@@ -1,10 +1,4 @@
-'''
- *   @author Nguyen Hua Phung
- *   @version 1.0
- *   23/10/2015
- *   This file provides a simple version of code generator
- *
-'''
+#1711679
 from Utils import *
 from StaticCheck import *
 from StaticError import *
@@ -467,7 +461,7 @@ class CodeGenVisitor(BaseVisitor, Utils):
         nenv = ctxt.sym
         body, typ = self.visit(ast.body, Access(frame, nenv, False, True))
         if ast.op == '!' and type(typ) is BoolType:
-            print(frame.getStackSize())
+            
             return body + self.emit.emitNOT(IntType(), frame), BoolType()
         elif ast.op == '-' and type(typ) is IntType:
             return body + self.emit.emitNEGOP(IntType(), frame), IntType()
@@ -478,7 +472,7 @@ class CodeGenVisitor(BaseVisitor, Utils):
         ctxt = o
         frame = ctxt.frame
         nenv = ctxt.sym
-        print(frame.getStackSize())
+        
         if type(ast.left) is ArrayCell:
             # gan mot gia tri cho mot index expression.
             left, typLeft = self.visit(ast.left, Access(frame, nenv, True, True))
@@ -560,7 +554,7 @@ class CodeGenVisitor(BaseVisitor, Utils):
                 elif ast.op == '%':
                     return left + right + self.emit.emitMOD(frame), IntType()
                 elif ast.op in ['<', '<=', '>', '>=', '==', '!=']:
-                    print(frame.getStackSize())
+                    
                     return left + right + self.emit.emitREOP(ast.op, IntType(), frame), BoolType()
 
             elif type(typLeft) is FloatType:
