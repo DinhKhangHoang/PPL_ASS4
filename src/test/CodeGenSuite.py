@@ -10,7 +10,7 @@ class CheckCodeGenSuite(unittest.TestCase):
         expect = "100"
         self.assertTrue(TestCodeGen.test(input,expect,501))
         
-    def test_02(self):
+    def test_int_and_float(self):
         input = """int b[9];
         float c;
         void main() {
@@ -23,7 +23,7 @@ class CheckCodeGenSuite(unittest.TestCase):
         expect = "1005.2"
         self.assertTrue(TestCodeGen.test(input,expect,502))
 
-    def test_03(self):
+    def test_initarray_for_global_and_local(self):
         input = """int b[9];
         float c;
         void main() {
@@ -33,7 +33,7 @@ class CheckCodeGenSuite(unittest.TestCase):
         """
         expect = "100"
         self.assertTrue(TestCodeGen.test(input,expect,503))
-    def test_04(self):
+    def test_initarray_in_global_and_and_initarray_in_scope(self):
         input = """int b[9];
         float c;
         void main() {
@@ -49,7 +49,7 @@ class CheckCodeGenSuite(unittest.TestCase):
         expect = "100"
         self.assertTrue(TestCodeGen.test(input,expect,504))
 
-    def test_05(self):
+    def test_callexpr_in_ifstmt(self):
         input = """int b[9];
         float c;
         void main() {
@@ -65,7 +65,7 @@ class CheckCodeGenSuite(unittest.TestCase):
         expect = "5"
         self.assertTrue(TestCodeGen.test(input,expect,505))
 
-    def test_06(self):
+    def test_callexpr_in_ifstmt01(self):
         input = """int b[9];
         float c;
         void main() {
@@ -81,27 +81,27 @@ class CheckCodeGenSuite(unittest.TestCase):
         expect = "5.2"
         self.assertTrue(TestCodeGen.test(input,expect,506))
 
-    def test_07(self):
+    def test_ID(self):
         input = """int b[9];
         float c;
         void main() {
             int d[10];
-            if(false){
-                putInt(5);
-            }
-            else{
-                putFloat(5.2);
-            }
+            c;
         }
         """
-        expect = "5.2"
+        expect = ""
         self.assertTrue(TestCodeGen.test(input,expect,507))
 
-    def test_08(self):
+    def test_ID_in_ifstmt(self):
         input = """int b[9];
         float c;
         void main() {
             if(false){
+                c;
+                c;
+                c;
+                c;
+                c;
                 c;
                 putInt(5);
             }
@@ -122,10 +122,21 @@ class CheckCodeGenSuite(unittest.TestCase):
             b = true;
             if(b){
                 c;
+                b;
+                c;
+                b;
+                c;
+                b;
                 putInt(5);
             }
             else{
                 putFloat(5.2);
+                c;
+                b;
+                c;
+                b;
+                c;
+                b;
             }
             
         }
@@ -133,7 +144,7 @@ class CheckCodeGenSuite(unittest.TestCase):
         expect = "5"
         self.assertTrue(TestCodeGen.test(input,expect,509))
 
-    def test_10(self):
+    def test_or_exp(self):
         input = """int b[9];
         float c;
         void main() {
@@ -154,7 +165,7 @@ class CheckCodeGenSuite(unittest.TestCase):
         expect = "5"
         self.assertTrue(TestCodeGen.test(input,expect,510))
 
-    def test_11(self):
+    def test_and_stmt(self):
         input = """int b[9];
         float c;
         void main() {
@@ -175,42 +186,45 @@ class CheckCodeGenSuite(unittest.TestCase):
         expect = "5.2"
         self.assertTrue(TestCodeGen.test(input,expect,511))
 
-    def test_12(self):
+    def test_or_exp_short_circuit(self):
         input = """int b[9];
         float c;
         float d[10];
         void main() {
-            
+            boolean b;
+            b = true || (c/0 < 0);
         }
         """
         expect = ""
         self.assertTrue(TestCodeGen.test(input,expect,512))
 
-    def test_13(self):
+    def test_and_stmt_short_circuit(self):
         input = """int b[9];
         float c;
         float d[10];
         void main() {
             boolean e[2];
+            e[1] = false && (c/0 < 0);
         }
         """
         expect = ""
         self.assertTrue(TestCodeGen.test(input,expect,513))
 
-    def test_14(self):
+    def test_and_stmt_short_circuit01(self):
         input = """int b[9];
         float c;
         float d[10];
         void main() {
             {
                 boolean e[2];
+                e[1] = true && true && true && true && false && (c/0 > 0);
             }
         }
         """
         expect = ""
         self.assertTrue(TestCodeGen.test(input,expect,514))
 
-    def test_vardecl_in_many_scope(self):
+    def test_and_or_short_circuit01(self):
         input = """int b[9];
         float c;
         float d[10];
@@ -218,7 +232,7 @@ class CheckCodeGenSuite(unittest.TestCase):
             {
                 boolean e[2];
                 {
-                    int a[5];
+                    e[1] = false || false || false || true || (c/0 > 0);
                 }
             }
         }
